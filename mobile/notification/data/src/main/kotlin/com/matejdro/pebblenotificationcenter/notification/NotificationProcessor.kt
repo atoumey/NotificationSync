@@ -8,6 +8,7 @@ import androidx.datastore.core.DataStore
 import androidx.datastore.preferences.core.Preferences
 import com.matejdro.pebblenotificationcenter.bluetooth.WatchSyncer
 import com.matejdro.pebblenotificationcenter.bluetooth.WatchappOpenController
+import com.matejdro.pebblenotificationcenter.bluetooth.WatchfaceDotNotifier
 import com.matejdro.pebblenotificationcenter.bluetooth.StockNotificationAction
 import com.matejdro.pebblenotificationcenter.common.di.AndroidVersion
 import com.matejdro.pebblenotificationcenter.notification.history.HideReason
@@ -41,6 +42,7 @@ class NotificationProcessor(
    private val context: Context,
    private val watchSyncer: WatchSyncer,
    private val openController: WatchappOpenController,
+   private val watchfaceDotNotifier: WatchfaceDotNotifier,
    private val ruleResolver: RuleResolver,
    private val globalPreferenceStore: DataStore<Preferences>,
    private val pauseController: PauseController,
@@ -76,6 +78,25 @@ class NotificationProcessor(
    }
 
    private var nextVibration: AtomicReference<IntArray?> = AtomicReference(null)
+
+   @Volatile
+   private var lastWatchfaceDotState: Boolean? = null
+
+   /**
+    * Recomputes whether any mirrored notification is un-viewed and pushes the state
+    * to the watchface dot whenever it flips. Must be called after every mutation of
+    * [notifications].
+    */
+   private fun refreshWatchfaceDotState() {
+      val hasUnviewed = notifications.values.any { it.unread }
+      if (hasUnviewed == lastWatchfaceDotState) {
+         return
+      }
+      lastWatchfaceDotState = hasUnviewed
+      defaultScope.launch {
+         watchfaceDotNotifier.updateUnviewed(hasUnviewed)
+      }
+   }
 
    init {
       defaultScope.launch {
@@ -170,6 +191,7 @@ class NotificationProcessor(
       }
       notifications[bucketId] = processedNotification
       notificationIdsByKeys[notification.key] = bucketId
+      refreshWatchfaceDotState()
       if (vibrationPattern != null && !usingStockPebbleOsNotifications() &&
          globalPreferenceStore.data.first()[GlobalPreferenceKeys.popUpOnWatch]
       ) {
@@ -427,6 +449,8 @@ class NotificationProcessor(
          }
       }
 
+      refreshWatchfaceDotState()
+
       watchSyncer.clearNotification(key)
    }
 
@@ -453,6 +477,8 @@ class NotificationProcessor(
    suspend fun onNotificationsCleared() {
       notifications.clear()
       notificationIdsByKeys.clear()
+
+      refreshWatchfaceDotState()
 
       watchSyncer.clearAllNotifications()
    }
@@ -486,6 +512,8 @@ class NotificationProcessor(
       val notification = notifications.computeIfPresent(bucketId) { _, value ->
          value.copy(unread = false)
       } ?: return
+
+      refreshWatchfaceDotState()
 
       val preferences = ruleResolver.resolveRules(notification.systemData).preferences
 

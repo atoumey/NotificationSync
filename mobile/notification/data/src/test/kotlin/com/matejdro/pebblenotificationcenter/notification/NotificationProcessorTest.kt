@@ -7,6 +7,7 @@ import androidx.datastore.preferences.core.edit
 import androidx.datastore.preferences.core.emptyPreferences
 import com.matejdro.pebblenotificationcenter.bluetooth.FakeWatchSyncer
 import com.matejdro.pebblenotificationcenter.bluetooth.FakeWatchappOpenController
+import com.matejdro.pebblenotificationcenter.bluetooth.FakeWatchfaceDotNotifier
 import com.matejdro.pebblenotificationcenter.common.test.InMemoryDataStore
 import com.matejdro.pebblenotificationcenter.notification.history.FakeHistoryInserter
 import com.matejdro.pebblenotificationcenter.notification.history.HideReason
@@ -51,6 +52,8 @@ class NotificationProcessorTest {
 
    private val openController = FakeWatchappOpenController()
 
+   private val watchfaceDotNotifier = FakeWatchfaceDotNotifier()
+
    private val rulesRepository = FakeRulesRepository()
 
    private val globalPreferences = InMemoryDataStore(emptyPreferences())
@@ -67,6 +70,7 @@ class NotificationProcessorTest {
       context,
       watchSyncer,
       openController,
+      watchfaceDotNotifier,
       RuleResolver(rulesRepository),
       globalPreferences,
       pauseController,
@@ -1565,6 +1569,7 @@ class NotificationProcessorTest {
          context,
          watchSyncer,
          openController,
+         watchfaceDotNotifier,
          RuleResolver(rulesRepository),
          globalPreferences,
          pauseController,
