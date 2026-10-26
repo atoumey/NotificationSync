@@ -6,23 +6,10 @@
 void (*message_processed_callback)(void);
 void (*request_failed_callback)(void);
 
-// Notification dot state, pushed by the NotificationSync Android companion
-// via the NOTIF_UNVIEWED AppMessage key. Persisted under its own key (clear
-// of the settings keys 1-3 and solar/location keys 50-51) so the dot
-// survives restarts with the last known state.
-#define NOTIF_UNVIEWED_PERSIST_KEY 100
-static bool s_notif_unviewed = false;
-
-bool messaging_notif_unviewed(void) { return s_notif_unviewed; }
-
 void messaging_init(void (*processed_callback)(void),
                     void (*failed_callback)(void)) {
   message_processed_callback = processed_callback;
   request_failed_callback = failed_callback;
-
-  if (persist_exists(NOTIF_UNVIEWED_PERSIST_KEY)) {
-    s_notif_unviewed = persist_read_bool(NOTIF_UNVIEWED_PERSIST_KEY);
-  }
 
   // Register callbacks
   app_message_register_inbox_received(inbox_received_callback);
@@ -130,9 +117,6 @@ void inbox_received_callback(DictionaryIterator *iterator, void *context) {
       dict_find(iterator, MESSAGE_KEY_ALT_CITY2_UTC_OFFSET);
   Tuple *localUtcOffset_tuple =
       dict_find(iterator, MESSAGE_KEY_LOCAL_UTC_OFFSET);
-
-  Tuple *notifUnviewed_tuple =
-      dict_find(iterator, MESSAGE_KEY_NOTIF_UNVIEWED);
 
   if (timeColor_tuple != NULL) {
     globalSettings.timeColor = GColorFromHEX(timeColor_tuple->value->int32);
@@ -351,11 +335,6 @@ void inbox_received_callback(DictionaryIterator *iterator, void *context) {
   if (localUtcOffset_tuple != NULL) {
     globalSettings.localUtcOffset =
         (int16_t)localUtcOffset_tuple->value->int32;
-  }
-
-  if (notifUnviewed_tuple != NULL) {
-    s_notif_unviewed = (bool)notifUnviewed_tuple->value->int8;
-    persist_write_bool(NOTIF_UNVIEWED_PERSIST_KEY, s_notif_unviewed);
   }
 
   Settings_saveToStorage();
