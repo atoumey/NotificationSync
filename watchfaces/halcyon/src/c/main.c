@@ -199,6 +199,14 @@ static void draw_center_text(Layer *layer, GContext *ctx) {
                        NULL);
     y += s->height + LINE_PADDING;
   }
+
+  // ---- Notification dot (state pushed by NotificationSync) ----
+  // Drawn just below the text block, in the primary subtext color so it
+  // follows the day/night theme.
+  if (messaging_notif_unviewed()) {
+    graphics_context_set_fill_color(ctx, primaryColor);
+    graphics_fill_circle(ctx, GPoint(bounds.size.w / 2, y + 4), 3);
+  }
 }
 
 // Resize literally everything on quick view
